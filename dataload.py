@@ -21,7 +21,7 @@ from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
 from torchvision import transforms as T
 
 
-def xml_to_csv(pths):
+def xml_to_csv(pths,img_path):
     '''pths: list of xml_files'''
     CLASS_NAME=['cat','dog']  #We only have two classes, but could be changed in future
 
@@ -61,7 +61,7 @@ class PetData(Dataset):
 
     
     def __getitem__(self, idx):
-        fn,target,xmin,ymin,xmax,ymax=df.iloc[idx] #
+        fn,target,xmin,ymin,xmax,ymax=self.df.iloc[idx] #
         im=cv2.cvtColor(cv2.imread(fn),cv2.COLOR_BGR2RGB) ##Load Img
         
         class_label=list([target])  ##Class
