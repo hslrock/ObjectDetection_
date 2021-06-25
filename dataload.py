@@ -43,11 +43,13 @@ def xml_to_csv(pths,img_path):
     return df
 
 
+
 class PetData(Dataset):
 
     
-    def __init__(self, dataframe,train=False):
+    def __init__(self, dataframe,train=False,tensor_return=True):
         self.df=dataframe
+        self.tensor_return=tensor_return
         if train:
             self.transform=iaa.Sequential([iaa.Resize((224,224))])
 
@@ -64,10 +66,13 @@ class PetData(Dataset):
         fn,target,xmin,ymin,xmax,ymax=self.df.iloc[idx] #
         im=cv2.cvtColor(cv2.imread(fn),cv2.COLOR_BGR2RGB) ##Load Img
         
-        class_label=list([target])  ##Class
+        class_label=target  ##Class
         bbs=BoundingBoxesOnImage([BoundingBox(xmin,ymin,xmax,ymax,label=class_label)], shape=im.shape) #BBox
 
         image_aug, bbs_aug = self.transform(image=im, bounding_boxes=bbs) #Transformation
         image_aug=self.torch_transform(image_aug)
-        return image_aug,bbs_aug,class_label
+        if self.tensor_return:
+            bbs_aug=torch.stack([torch.tensor([bb.x1,bb.y1,bb.x2,bb.y2,bb.label]) for bb in bbs_aug])
+                
+        return image_aug,bbs_aug#,class_label
     
