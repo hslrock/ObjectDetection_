@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset
-
+import torch.nn as nn
 ##File Management
 
 import os
@@ -75,4 +75,66 @@ class PetData(Dataset):
             bbs_aug=torch.stack([torch.tensor([bb.x1,bb.y1,bb.x2,bb.y2,bb.label]) for bb in bbs_aug])
                 
         return image_aug,bbs_aug#,class_label
+    
+class Sub_region(Dataset):
+    def __init__(self, df,img,pil=True,return_idx=False):
+        self.src_img=img
+        self.df=df
+        self.resize=nn.Upsample((224,224))
+        self.transforms=T.ToPILImage()
+        self.pil=pil
+        self.return_idx=return_idx
+    def __len__(self):
+        return len(self.df)
+    def __getitem__(self, idx):
+        label=self.df.iloc[idx]['labels']
+        rect=self.df.iloc[idx]['rect']
+        x1=rect[0]
+        y1=rect[1]
+        x2=rect[2]+x1+1
+        y2=rect[3]+y1+1
+        img=self.resize(self.src_img[:,y1:y2,x1:x2].unsqueeze(0))
+        if self.pil:
+            return self.transforms(img.squeeze(0)*0.5+0.5),label
+        elif self.return_idx:
+            return img.squeeze(0),label,idx
+        else:
+            return img.squeeze(0),label
+
+
+        
+    
+    
+class Sub_region_train(Dataset):
+    def __init__(self, df,base_path,train=True):
+        self.df=df
+        self.base_path=base_path
+        if train:
+            self.transforms=T.Compose([
+                 T.RandomHorizontalFlip(),
+                T.RandomRotation(10),
+                T.ToTensor(),
+
+                T.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5)),
+
+            ])
+        else:
+            self.transforms=T.Compose([
+            T.ToTensor(),
+            T.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5)),
+
+            ])
+        self.le= preprocessing.LabelEncoder()
+        self.le=self.le.fit([-1,0,1])
+    def __len__(self):
+        return len(self.df)
+    def __getitem__(self, idx):
+       # print(self.df.filename[idx])
+       # img=cv2.imread(os.path.join(self.base_path,self.df.filename[idx]))
+     #   img=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        img=Image.open(os.path.join(self.base_path,self.df.filename[idx]))
+        img=self.transforms(img)
+        
+        return img, self.le.transform([self.df.labels[idx]])[0]
+    
     

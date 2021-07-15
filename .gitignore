@@ -1,0 +1,8 @@
+#Folder
+models/
+
+
+*.csv
+*.pt
+*.npy
+*.sv
