@@ -312,8 +312,7 @@ def selective_search(
             'rect': (
                 r['min_x'], r['min_y'],
                 r['max_x'] - r['min_x'], r['max_y'] - r['min_y']),
-            'size': r['size'],
             'labels': r['labels']
         })
 
-    return img, regions
+    return regions
