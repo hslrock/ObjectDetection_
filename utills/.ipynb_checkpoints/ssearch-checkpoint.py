@@ -311,8 +311,8 @@ def selective_search(
         regions.append({
             'rect': (
                 r['min_x'], r['min_y'],
-                r['max_x'], r['max_y'] )
-
+                r['max_x'], r['max_y'] ),
+            'labels': r['labels']
         })
 
     return regions
