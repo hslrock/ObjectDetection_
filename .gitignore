@@ -1,6 +1,7 @@
 #Folder
 models/
-
+result/
+sample/
 
 *.csv
 *.pt
