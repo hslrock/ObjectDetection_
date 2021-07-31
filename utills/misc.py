@@ -39,8 +39,10 @@ def disp_batch(batch,batch_img=False,tensor=True) :
 
     plt.show()
 
-    
-def create_label(proposed_regions,bboxes):
+
+def cvtScale(box): #Convert x1,y1,x2,y2, to xc,yc,wid,hei
+    return torch.tensor([(box[0]+box[2])/2.0,(box[1]+box[3])/2.0,box[2]-box[0],box[3]-box[1]])
+def create_label(proposed_regions,bboxes,iou_threshold=0.6):
     ''' 
     Adding Labelling to the proposed regions, if iou of prposed_region and actual bounding box of label 'x' is larger than the threshold, we label it as 'x' 
     
@@ -48,20 +50,26 @@ def create_label(proposed_regions,bboxes):
     bboxes: ground truth bbox of original img
     '''
     
-    iou_threshold=0.6
+    iou_threshold=iou_threshold
     for region in proposed_regions:
-        max_iou=0
-        region['labels']=-1
-        region_tensor=torch.tensor((region['rect'][0],region['rect'][1],region['rect'][0]+region['rect'][2],region['rect'][1]+region['rect'][3]))
-        for bbox in bboxes:
+        max_iou=0.0
+        region_tensor=torch.tensor((region['rect'][0],region['rect'][1],region['rect'][2],region['rect'][3]))
+        for box_idx,bbox in enumerate(bboxes):
             box_tensor=torch.tensor((bbox[0],bbox[1],bbox[2],bbox[3]))
             cur_iou=iou.torch_getIOU(region_tensor,box_tensor)
             if cur_iou>max_iou:
                 max_iou=cur_iou
+
                 if max_iou>iou_threshold:
-                    region['labels']=bbox[4].item()    
+                    region['rect']=(*region['rect'],bbox[4].item(),box_idx)
+                else:
+                    region['rect']=(*region['rect'],0.0,-1)
                 
-        #region['iou']=max_iou
+            else:
+                region['rect']=(*region['rect'],0.0,-1)
+            region['rect']=(*region['rect'],max_iou)
+                    
+
     return proposed_regions
 
 def balance_df(proposed_regions):
