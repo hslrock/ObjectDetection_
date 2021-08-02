@@ -7,3 +7,4 @@ sample/
 *.pt
 *.npy
 *.sv
+pretrained_model/FastRCNN_42.pth
