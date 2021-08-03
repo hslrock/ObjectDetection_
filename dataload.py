@@ -20,7 +20,9 @@ import imgaug.augmenters as iaa
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
 from torchvision import transforms as T
 
-
+from utills import ssearch,misc
+from utills.misc import create_label,balance_df
+import random
 def xml_to_csv(pths,img_path):
     '''pths: list of xml_files'''
     CLASS_NAME=['cat','dog']  #We only have two classes, but could be changed in future
@@ -43,7 +45,73 @@ def xml_to_csv(pths,img_path):
     return df
 
 
+class PetData_FASTRCNN(Dataset):
+    def __init__(self, dataframe,train=False,ssearch=False,samples=16):
+        self.df=dataframe
+        self.ssearch=ssearch
+        self.transform=iaa.Sequential([iaa.Resize((224,224))])
+        self.torch_transform=T.Compose([T.ToTensor(),
+                                        T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])    
+        self.samples=samples
+        self.train=train
+    def __len__(self):
+        return len(self.df)
+    
+    def __getitem__(self, idx):
+        regions=None
+        fn,target,xmin,ymin,xmax,ymax=self.df.iloc[idx] #
+        im=cv2.cvtColor(cv2.imread(fn),cv2.COLOR_BGR2RGB) ##Load Img
+        
+        class_label=target+1  ##Class #0 represents background
+        bbs=BoundingBoxesOnImage([BoundingBox(xmin,ymin,xmax,ymax,label=class_label)], shape=im.shape) #BBox
+        image_aug, bbs_aug = self.transform(image=im, bounding_boxes=bbs) #Transformation
+        bbs_aug=torch.stack([torch.tensor([bb.x1,bb.y1,bb.x2,bb.y2,bb.label]) for bb in bbs_aug])
+        
+        region_np=[]
+        img_shape=image_aug.shape      
+        if self.ssearch:                                
+            regions=ssearch.selective_search(image_aug, scale=50, sigma=0.8, min_size=20)
+            
+            if self.train:
+                regions=create_label(regions,bbs_aug,iou_threshold=0.5)
+                regions=[dict(t) for t in {tuple(d.items()) for d in regions}]
+                for dicts in regions:
+                    region_np.append((np.array(dicts['rect'],dtype=np.float)))
+                region_np=np.stack(region_np)
+                region_np=region_np[np.where(region_np[:,-1]>0.1)]
+                
+                try:
+                    pos_idx = random.choices(np.where((region_np[:,4]) != 0)[0],k=16)
+                except:
+                    pos_idx=[]
+                neg_samples=64
+                if len(pos_idx):
+                    neg_samples=48
+                neg_idx = random.choices(np.where((region_np[:,4]) == 0)[0],k=neg_samples)
+                region_np=region_np[pos_idx+neg_idx]
+                region_np=torch.from_numpy(region_np)
+                labels=region_np[:,4].long()
+                bbox_idx=region_np[:,5].long()
+                region_np=torch.stack([torch.clamp(region_np[:,0]-16,0,img_shape[1]),
+                                       torch.clamp(region_np[:,1]-16,0,img_shape[0]),
+                                       torch.clamp(region_np[:,2]+16,0,img_shape[1]),
+                                       torch.clamp(region_np[:,3]+16,0,img_shape[0])],dim=1)
+                
+            else:
+                regions=[dict(t) for t in {tuple(d.items()) for d in regions}]
+                for dicts in regions:
+                    region_np.append((np.array(dicts['rect'],dtype=np.float)))
+                region_np=np.stack(region_np)
+                        
+                region_np=torch.from_numpy(region_np)
+                region_np=torch.stack([torch.clamp(region_np[:,0]-16,0,img_shape[1]),
+                                       torch.clamp(region_np[:,1]-16,0,img_shape[0]),
+                                       torch.clamp(region_np[:,2]+16,0,img_shape[1]),
+                                       torch.clamp(region_np[:,3]+16,0,img_shape[0])],dim=1)
+                return self.torch_transform(image_aug), bbs_aug,region_np,
 
+        return self.torch_transform(image_aug), bbs_aug,region_np,labels,bbox_idx
+    
 class PetData(Dataset):
 
     
