@@ -112,6 +112,32 @@ class PetData_FASTRCNN(Dataset):
 
         return self.torch_transform(image_aug), bbs_aug,region_np,labels,bbox_idx
     
+class PetData_FASTERRCNN(Dataset):
+    def __init__(self, dataframe,train=False,ssearch=False,samples=16):
+        self.df=dataframe
+        self.ssearch=ssearch
+        self.transform=iaa.Sequential([iaa.Resize({"shorter-side": 600, "longer-side": "keep-aspect-ratio"})])
+        self.torch_transform=T.Compose([T.ToTensor(),
+                                        T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])    
+        self.samples=samples
+        self.train=train
+    def __len__(self):
+        return len(self.df)
+    
+    def __getitem__(self, idx):
+        regions=None
+        fn,target,xmin,ymin,xmax,ymax=self.df.iloc[idx] #
+        im=cv2.cvtColor(cv2.imread(fn),cv2.COLOR_BGR2RGB) ##Load Img
+        
+        class_label=target+1  ##Class #0 represents background
+        bbs=BoundingBoxesOnImage([BoundingBox(xmin,ymin,xmax,ymax,label=class_label)], shape=im.shape) #BBox
+        image_aug, bbs_aug = self.transform(image=im, bounding_boxes=bbs) #Transformation
+        bbs_aug=torch.stack([torch.tensor([bb.x1,bb.y1,bb.x2,bb.y2,bb.label]) for bb in bbs_aug])
+        
+        region_np=[]
+        img_shape=image_aug.shape      
+        return self.torch_transform(image_aug), bbs_aug,
+    
 class PetData(Dataset):
 
     
