@@ -41,7 +41,7 @@ def disp_batch(batch,batch_img=False,tensor=True) :
 
 
 def cvtScale(box): #Convert x1,y1,x2,y2, to xc,yc,wid,hei
-    return torch.tensor([(box[0]+box[2])/2.0,(box[1]+box[3])/2.0,box[2]-box[0],box[3]-box[1]])
+    return torch.tensor([(box[0]+box[2])/2.0,(box[1]+box[3])/2.0,box[2]-box[0]+1,box[3]-box[1]+1])
 def create_label(proposed_regions,bboxes,iou_threshold=0.6):
     ''' 
     Adding Labelling to the proposed regions, if iou of prposed_region and actual bounding box of label 'x' is larger than the threshold, we label it as 'x' 

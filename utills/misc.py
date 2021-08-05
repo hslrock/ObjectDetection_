@@ -38,10 +38,14 @@ def disp_batch(batch,batch_img=False,tensor=True) :
             fill=False ) )
 
     plt.show()
-
+    
+def cvtScale_xxyy(box): #Convert  xc,yc,wid,hei to x1,y1,x2,y2, 
+    hw=box[2]/2.0
+    hh=box[3]/2.0
+    return torch.tensor([box[0]-hw,box[1]-hh,box[0]+hw,box[1]+hh])
 
 def cvtScale(box): #Convert x1,y1,x2,y2, to xc,yc,wid,hei
-    return torch.tensor([(box[0]+box[2])/2.0,(box[1]+box[3])/2.0,box[2]-box[0],box[3]-box[1]])
+    return torch.tensor([(box[0]+box[2])/2.0,(box[1]+box[3])/2.0,box[2]-box[0]+1,box[3]-box[1]+1])
 def create_label(proposed_regions,bboxes,iou_threshold=0.6):
     ''' 
     Adding Labelling to the proposed regions, if iou of prposed_region and actual bounding box of label 'x' is larger than the threshold, we label it as 'x' 
@@ -89,3 +93,20 @@ def balance_df(proposed_regions):
     g = regions_df.groupby('labels').apply(sampling_k_elements).reset_index(drop=True)
     
     return g
+
+
+# root_path="D:/Dataset/OD_Data/train"
+# file_name=["img.pt",
+# "bbs.pt",
+# "region_np.pt",
+# "labels.pt",
+# "bbox_idx.pt"]
+# for idx,dataset in enumerate(tqdm(train_ds)):
+#     save_path=os.path.join(root_path,f'{idx:05}')
+#     try:
+#         os.mkdir(save_path)
+#     except:
+#         print("folder exists")
+#         idx=141
+#     for index,data in enumerate(dataset):
+#         torch.save(data,os.path.join(save_path,file_name[index]))
